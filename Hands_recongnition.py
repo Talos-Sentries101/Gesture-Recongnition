@@ -57,5 +57,5 @@ while True:
     frame = detector.locatefingers(frame)
     lmslist= detector.trackposition(frame)
     
-    cv2.imshow('image',framecv2.flip(frame, 1))
+    cv2.imshow('image',cv2.flip(frame, 1))
     if cv2.waitKey(1) == ord('q'): break
