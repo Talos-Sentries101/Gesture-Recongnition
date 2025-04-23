@@ -12,15 +12,23 @@ volper = 0
 volRange=volume.GetVolumeRange()
 minVol , maxVol , volPer= volRange[0], volRange[-1], 0
 class Handtracking:
-    def __init__(self,mode=False, limit_hands=2,detection=0.5,tracktion=0.5):
+    ef __init__(self, mode=False, limit_hands=2, detection=0.7, tracktion=0.9):
         self.__mode__ = mode
         self.__maxHands__ = limit_hands
         self.__detectionCon__ = detection
         self.__trackCon__ = tracktion
         self.handsMp = mp.solutions.hands
-        self.hands = self.handsMp.Hands()
+        self.hands = self.handsMp.Hands(static_image_mode=mode,
+            max_num_hands=limit_hands,
+            min_detection_confidence=detection,
+            min_tracking_confidence=tracktion)
         self.mpDraw = mp.solutions.drawing_utils
         self.tipIds = [4, 8, 12, 16, 20]
+        
+        self.is_drawing = False
+        self.draw_points =[]
+        self.last_drawn_point = None
+        self.current_points=[]
     # to locate different fingers
     def locatefingers(self,frame,draw=True):
         convt_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
