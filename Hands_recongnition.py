@@ -3,13 +3,11 @@ import numpy as np
 import mediapipe as mp
 import cv2
 import math as math
-from enum import IntEnum
 from ctypes import cast, POINTER
 
 import pyautogui
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-from google.protobuf.json_format import MessageToDict
 import screen_brightness_control as sbcontrol
 
 devices = AudioUtilities.GetSpeakers()
@@ -143,19 +141,21 @@ class Handtracking:
             canvas.fill(0)
         return canvas
 
-    def findDistance(self, p1, p2, img, draw=True, r=15, t=3):
-        x1, y1 = self.lmslist[p1][1:]
-        x2, y2 = self.lmslist[p2][1:]
+    def findDistance(self, p1, p2, frame, draw=True, r=15, t=3):
+        l1=self.lmslist[p1][1:]
+        l2= self.lmslist[p2][1:]
+        x1, y1 = l1[0],l1[1]
+        x2, y2 = l2[0],l2[1]
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
 
         if draw:
-            cv2.line(img, (x1, y1), (x2, y2), (255, 0, 255), t)
-            cv2.circle(img, (x1, y1), r, (255, 0, 255), cv2.FILLED)
-            cv2.circle(img, (x2, y2), r, (255, 0, 255), cv2.FILLED)
-            cv2.circle(img, (cx, cy), r, (0, 0, 255), cv2.FILLED)
+            cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 255), t)
+            cv2.circle(frame, (x1, y1), r, (255, 0, 255), cv2.FILLED)
+            cv2.circle(frame, (x2, y2), r, (255, 0, 255), cv2.FILLED)
+            cv2.circle(frame, (cx, cy), r, (0, 0, 255), cv2.FILLED)
         length = math.hypot(x2 - x1, y2 - y1)
 
-        return length, img, [x1, y1, x2, y2, cx, cy]
+        return length, frame, [x1, y1, x2, y2, cx, cy]
     def Mousecontrol(self,frame):
         frameR = 100  # frame Reduction
         smoothening = 7
@@ -225,6 +225,26 @@ while True:
             autopy.mouse.move(screen_width - curr_x, curr_y)  # Moving the cursor
             cv2.circle(frame, (x1, y1), 7, (255, 0, 255), cv2.FILLED)
             prev_x, prev_y = curr_x, curr_y
+        # Both index and middle are up : left Clicking mode
+        if fingers[1] == 1 and fingers[2] == 1:
+
+            length, frame, lineInfo = detector.findDistance(8, 12, frame)
+            print(length)
+
+
+            if length < 40:
+                cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
+                autopy.mouse.click()
+
+            # Both index and middle are up : Right Clicking mode
+        if fingers[1] == 1 and fingers[2] == 1:
+
+            length, frame, lineInfo = detector.findDistance(4, 20, frame)
+            print(length)
+
+            if length < 40:
+                cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
+                autopy.mouse.click(button=autopy.mouse.Button.RIGHT)
     canvas = detector.draw_mode(frame, canvas)
     frame= cv2.GaussianBlur(frame,(5,5),20)
     cv2.imshow('Live Feed', frame)
