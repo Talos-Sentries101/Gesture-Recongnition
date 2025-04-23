@@ -1,10 +1,16 @@
+import autopy
 import numpy as np
 import mediapipe as mp
 import cv2
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-from ctypes import cast, POINTER
-from comtypes import CLSCTX_ALL
 import math as math
+from enum import IntEnum
+from ctypes import cast, POINTER
+
+import pyautogui
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+from google.protobuf.json_format import MessageToDict
+import screen_brightness_control as sbcontrol
 
 devices = AudioUtilities.GetSpeakers()
 interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
@@ -57,9 +63,9 @@ class Handtracking:
            xmin,xmax= min(x_cords),max(x_cords)
            ymin,ymax= min(y_cords),max(y_cords)
            bounding_box = xmin,ymin,xmax,ymax
-           if draw:
-               cv2.rectangle(frame, (xmin - 20, ymin - 20), (xmax + 20, ymax + 20), (0, 255, 0), 2)
-       return self.lmslist,bounding_box
+           '''if draw:
+               cv2.rectangle(frame, (xmin - 20, ymin - 20), (xmax + 20, ymax + 20), (0, 255, 0), 2)'''
+       return self.lmslist
 
     def findFingerUp(self):
         if not self.lmslist: return []
@@ -137,18 +143,61 @@ class Handtracking:
             canvas.fill(0)
         return canvas
 
+    def findDistance(self, p1, p2, img, draw=True, r=15, t=3):
+        x1, y1 = self.lmslist[p1][1:]
+        x2, y2 = self.lmslist[p2][1:]
+        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
 
-co=cv2.VideoCapture(1)
-co.set(cv2.CAP_PROP_FRAME_WIDTH,640)
+        if draw:
+            cv2.line(img, (x1, y1), (x2, y2), (255, 0, 255), t)
+            cv2.circle(img, (x1, y1), r, (255, 0, 255), cv2.FILLED)
+            cv2.circle(img, (x2, y2), r, (255, 0, 255), cv2.FILLED)
+            cv2.circle(img, (cx, cy), r, (0, 0, 255), cv2.FILLED)
+        length = math.hypot(x2 - x1, y2 - y1)
+
+        return length, img, [x1, y1, x2, y2, cx, cy]
+    def Mousecontrol(self,frame):
+        frameR = 100  # frame Reduction
+        smoothening = 7
+        plocX, plocY = 0, 0
+        clocX, clocY = 0, 0
+        p1, q1 = self.lmslist[8][1:]
+        p2, q2 = self.lmslist[12][1:]
+        fingers= self.findFingerUp()
+        wScr, hScr = autopy.screen.size()
+        if fingers[1]==1 and fingers[2]==0:
+            x3 = np.interp(p1, (frameR, 640 - frameR), (0, wScr))
+            y3 = np.interp(q1, (frameR, 480 - frameR), (0, hScr))
+
+            # 6. Smoothen Valuse
+            clocX = plocX + (x3 - plocX) / smoothening
+            clocY = plocY + (y3 - plocY) / smoothening
+
+            # 7. Move mouse
+            autopy.mouse.move(wScr - clocX, clocY)
+            cv2.circle(frame, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
+            plocX, plocY = clocX, clocY
+        return frame
+
+co=cv2.VideoCapture(0)
+co.set(cv2.CAP_PROP_FRAME_WIDTH,680)
 co.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 detector = Handtracking()
-canvas = np.zeros((480, 640, 3), dtype=np.uint8)
+canvas = np.zeros((1280, 720, 3), dtype=np.uint8)
 
 if not co.isOpened():
     print("Error accesing camera plz check for any access related issue or a camera shutter blocking ")
     exit()
-
+width = 640             # Width of Camera
+height = 480            # Height of Camera
+frameR = 100            # Frame Rate
+smoothening = 8         # Smoothening Factor
+prev_x, prev_y = 0, 0   # Previous coordinates
+curr_x, curr_y = 0, 0   # Current coordinates
+screen_width, screen_height = autopy.screen.size() 
 canvas = np.zeros((1280, 720, 3), dtype=np.uint8)
+wScr, hScr = autopy.screen.size()
+pyautogui.FAILSAFE = False
 while True:
     ret, frame = co.read()
     if not ret:
@@ -157,9 +206,27 @@ while True:
     frame = cv2.flip(frame, 1)
 
     frame = detector.locatefingers(frame)
-    lmslist, _ = detector.trackposition(frame)
-    canvas = detector.draw_mode(frame, canvas)
+    lmslist= detector.trackposition(frame)
+    if len(lmslist) != 0:
+        temp= lmslist[8][1:]
+        temp2=lmslist[12][1:]
+        x1, y1 = temp[0],temp[1]
+        x2, y2 = temp2[0],temp2[1]
+        # 3. Check which finger are up
+        fingers = detector.findFingerUp()
+        # 4. Only index finger: Moving mode
+        if fingers[1] == 1 and fingers[2] == 0:
+            x3 = np.interp(x1, (frameR, width - frameR), (0, screen_width))
+            y3 = np.interp(y1, (frameR, height - frameR), (0, screen_height))
 
+            curr_x = prev_x + (x3 - prev_x) / smoothening
+            curr_y = prev_y + (y3 - prev_y) / smoothening
+
+            autopy.mouse.move(screen_width - curr_x, curr_y)  # Moving the cursor
+            cv2.circle(frame, (x1, y1), 7, (255, 0, 255), cv2.FILLED)
+            prev_x, prev_y = curr_x, curr_y
+    canvas = detector.draw_mode(frame, canvas)
+    frame= cv2.GaussianBlur(frame,(5,5),20)
     cv2.imshow('Live Feed', frame)
     cv2.imshow('Drawing Frame ', canvas)
 
@@ -168,4 +235,3 @@ while True:
 
 co.release()
 cv2.destroyAllWindows()
-
