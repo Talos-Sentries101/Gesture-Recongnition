@@ -5,14 +5,14 @@ from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
 import math as math
+
 devices = AudioUtilities.GetSpeakers()
 interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
 volume = cast(interface, POINTER(IAudioEndpointVolume))
-volper = 0
-volRange=volume.GetVolumeRange()
-minVol , maxVol , volPer= volRange[0], volRange[-1], 0
+minVol, maxVol = volume.GetVolumeRange()[:2]
+
 class Handtracking:
-    ef __init__(self, mode=False, limit_hands=2, detection=0.7, tracktion=0.9):
+    def __init__(self, mode=False, limit_hands=2, detection=0.7, tracktion=0.9):
         self.__mode__ = mode
         self.__maxHands__ = limit_hands
         self.__detectionCon__ = detection
@@ -24,12 +24,12 @@ class Handtracking:
             min_tracking_confidence=tracktion)
         self.mpDraw = mp.solutions.drawing_utils
         self.tipIds = [4, 8, 12, 16, 20]
-        
+        #self.on_or_off = 0
         self.is_drawing = False
         self.draw_points =[]
         self.last_drawn_point = None
         self.current_points=[]
-    # to locate different fingers
+# to locate different fingers and draw connections
     def locatefingers(self,frame,draw=True):
         convt_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         self.results = self.hands.process(convt_image)
@@ -38,7 +38,7 @@ class Handtracking:
                 if draw:
                     self.mpDraw.draw_landmarks(frame, hand, self.handsMp.HAND_CONNECTIONS)
         return frame
-    # To track every finger movement by drawing tracking points and a bounding box
+# To track every finger movement by drawing tracking points and a bounding box
     def trackposition(self,frame,handNo=0,draw=True):
        x_cords=[]
        y_cords=[]
@@ -49,28 +49,30 @@ class Handtracking:
            for id,lm in enumerate(myhand.landmark):
                h , w , c=frame.shape
                cx,cy = int(lm.x*w),int(lm.y*h)
+               cz=lm.z
                x_cords.append(cx)
                y_cords.append(cy)
-               self.lmslist.append([id,cx,cy])
+               self.lmslist.append([id,cx,cy,cz])
                if draw: cv2.circle(frame,(cx,cy),5,(255,0,255),cv2.FILLED)
            xmin,xmax= min(x_cords),max(x_cords)
            ymin,ymax= min(y_cords),max(y_cords)
            bounding_box = xmin,ymin,xmax,ymax
-           print("Hands Keypoint")
-           print(bounding_box)
-           print(lmslist)
            if draw:
-               cv2.rectangle(frame,(xmin-20,ymin-20),(xmax+20,ymax+20),(0,255,0),2)
+               cv2.rectangle(frame, (xmin - 20, ymin - 20), (xmax + 20, ymax + 20), (0, 255, 0), 2)
        return self.lmslist,bounding_box
 
     def findFingerUp(self):
+        if not self.lmslist: return []
         fingers = []
-
+        # thumb logic
+        #  lmslist = [landmark_id,x,y]
+        #  self.tipIds[0] is 4, which is the thumb tip landmark index.
+        #  self.tipIds[0] - 1 is 3, which is the thumb's joint just before the tip
+        #             x co-ord for thumb tip >  x co-ord for thumb mid
         if self.lmslist[self.tipIds[0]][1] > self.lmslist[self.tipIds[0] - 1][1]:
             fingers.append(1)
         else:
             fingers.append(0)
-
         for id in range(1, 5):
             if self.lmslist[self.tipIds[id]][2] < self.lmslist[self.tipIds[id] - 2][2]:
                 fingers.append(1)
@@ -78,7 +80,9 @@ class Handtracking:
                 fingers.append(0)
 
         return fingers
-    def Volumecontol(self,frame):
+
+
+    def Volumecontrol(self,frame):
         if len(self.lmslist) != 0:
             x1, y1 = self.lmslist[4][1], self.lmslist[4][2]  # thumb
             x2, y2 = self.lmslist[8][1], self.lmslist[8][2]  # index finger
@@ -90,22 +94,78 @@ class Handtracking:
             if length < 10:
                 cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
             vol = np.interp(length, [10, 440], [minVol, maxVol])
-            return volume.SetMasterVolumeLevel(vol, None)
-            volPer = np.interp(length, [50, 220], [0, 100])
-co=cv2.VideoCapture(0)
+            volume.SetMasterVolumeLevel(vol, None)
+
+    def draw_mode(self,frame, canvas ):
+        if not self.lmslist:
+            self.is_drawing = False
+            return canvas
+        fingers = self.findFingerUp()
+        h,w,_ = frame.shape
+        if fingers == [ 0,0,1, 1, 1]:
+            if not self.is_drawing:     #staart new drawing sesion if not drawing
+                self.current_points=[]
+                self.last_drawn_point = None
+                self.is_drawing = True
+            x, y = self.lmslist[8][1], self.lmslist[8][2]
+            x = max(0, min(x, w - 1))   # out of frame
+            y = max(0, min(y, h - 1))   # handling
+            #add point if its the first point and if the distance is more than 3 units
+            if self.last_drawn_point is None or math.hypot(x - self.last_drawn_point[0], y - self.last_drawn_point[1]) > 2:
+                self.current_points.append((x, y))
+                self.last_drawn_point = (x, y)
+        else: #terminate between drawing and save previous drawing
+            if self.is_drawing and self.current_points:
+                self.draw_points.append(self.current_points)
+                self.current_points = []
+            self.is_drawing = False
+
+        '''Draw a dot (circle) at the current position
+        #cv2.circle(canvas, (x, y), 10, (0, 0, 255), cv2.FILLED)'''
+        for points in self.draw_points:#draw previous drawing from save
+            for i in range(1, len(points)):
+                cv2.line(canvas, points[i - 1], points[i], (0, 0, 255), 10)
+            #draw current drawing
+        for i in range(1, len(self.current_points)):
+            cv2.line(canvas, self.current_points[i - 1], self.current_points[i], (0, 0, 255), 10)
+        if fingers == [1,0,0,0,1]:
+            print('Clearing canvas')
+            self.draw_points = []
+            self.current_points = []
+            self.last_drawn_point = None
+            self.is_drawing = False
+            canvas.fill(0)
+        return canvas
+
+
+co=cv2.VideoCapture(1)
 co.set(cv2.CAP_PROP_FRAME_WIDTH,640)
 co.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-detector= Handtracking()
-lmslist=[]
+detector = Handtracking()
+canvas = np.zeros((480, 640, 3), dtype=np.uint8)
+
 if not co.isOpened():
     print("Error accesing camera plz check for any access related issue or a camera shutter blocking ")
     exit()
+
+canvas = np.zeros((1280, 720, 3), dtype=np.uint8)
 while True:
-    ret,frame = co.read()
+    ret, frame = co.read()
+    if not ret:
+        print("Can't receive frame (stream end?). Exiting ...")
+        break
+    frame = cv2.flip(frame, 1)
+
     frame = detector.locatefingers(frame)
-    lmslist= detector.trackposition(frame)
-    lmslist=detector.Volumecontol(frame)
-    print(lmslist)
-    frame=cv2.flip(frame,1)
-    cv2.imshow('image',frame)
-    if cv2.waitKey(1) == ord('q'): break
+    lmslist, _ = detector.trackposition(frame)
+    canvas = detector.draw_mode(frame, canvas)
+
+    cv2.imshow('Live Feed', frame)
+    cv2.imshow('Drawing Frame ', canvas)
+
+    if cv2.waitKey(1) == ord('q'):
+        break
+
+co.release()
+cv2.destroyAllWindows()
+
