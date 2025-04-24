@@ -10,6 +10,7 @@ from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 import screen_brightness_control as sbcontrol
 
+
 devices = AudioUtilities.GetSpeakers()
 interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
 volume = cast(interface, POINTER(IAudioEndpointVolume))
@@ -33,6 +34,7 @@ class Handtracking:
         self.draw_points =[]
         self.last_drawn_point = None
         self.current_points=[]
+        self.last_screen_shot =  float(0)
 # to locate different fingers and draw connections
     def locatefingers(self,frame,draw=True):
         convt_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -178,6 +180,27 @@ class Handtracking:
             cv2.circle(frame, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
             plocX, plocY = clocX, clocY
         return frame
+        
+        def screen_shot(self, frame, dt=None):
+        if not self.lmslist:
+            return
+        fingers = self.findFingerUp()
+        current_time =time.time()
+        timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+        screenshot_path = f"full_screenshot_{timestamp}.png"
+        if fingers == [0, 0, 0, 0, 0] :
+            if int(abs(current_time - self.last_screen_shot)) > 2:
+
+                screenshot = pyautogui.screenshot()
+
+                screenshot.save(screenshot_path)
+                print(f"Full screen screenshot saved: {screenshot_path}")
+                self.last_screen_shot = current_time
+                
+        if self.is_drawing and fingers == [0, 0, 0, 0, 0] :
+            cv2.imwrite(screenshot_path, canvas)
+            print(f"Drawing canvas screenshot saved: {screenshot_path}")
+            self.last_screen_shot_canvas = current_time
 
 co=cv2.VideoCapture(0)
 co.set(cv2.CAP_PROP_FRAME_WIDTH,680)
@@ -246,6 +269,7 @@ while True:
                 cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
                 autopy.mouse.click(button=autopy.mouse.Button.RIGHT)
     canvas = detector.draw_mode(frame, canvas)
+    detector.screen_shot(frame)
     frame= cv2.GaussianBlur(frame,(5,5),20)
     cv2.imshow('Live Feed', frame)
     cv2.imshow('Drawing Frame ', canvas)
