@@ -234,7 +234,7 @@ while True:
             curr_x = prev_x + (x3 - prev_x) / smoothening
             curr_y = prev_y + (y3 - prev_y) / smoothening
 
-            autopy.mouse.move(screen_width - curr_x, curr_y)  # Moving the cursor
+            autopy.mouse.move(curr_x, curr_y)  # Moving the cursor
             cv2.circle(frame, (x1, y1), 7, (255, 0, 255), cv2.FILLED)
             prev_x, prev_y = curr_x, curr_y
         # Both index and middle are up : left Clicking mode
