@@ -107,45 +107,66 @@ class Handtracking:
             vol = np.interp(length, [10, 440], [minVol, maxVol])
             volume.SetMasterVolumeLevel(vol, None)
 
-    def draw_mode(self,frame, canvas ):
+    def draw_mode(self, frame, canvas):
         if not self.lmslist:
             self.is_drawing = False
             return canvas
-        fingers = self.findFingerUp()
-        h,w,_ = frame.shape
-        if fingers == [ 0,0,1, 1, 1]:
-            if not self.is_drawing:     #staart new drawing sesion if not drawing
-                self.current_points=[]
-                self.last_drawn_point = None
-                self.is_drawing = True
-            x, y = self.lmslist[8][1], self.lmslist[8][2]
-            x = max(0, min(x, w - 1))   # out of frame
-            y = max(0, min(y, h - 1))   # handling
-            #add point if its the first point and if the distance is more than 3 units
-            if self.last_drawn_point is None or math.hypot(x - self.last_drawn_point[0], y - self.last_drawn_point[1]) > 2:
-                self.current_points.append((x, y))
-                self.last_drawn_point = (x, y)
-        else: #terminate between drawing and save previous drawing
-            if self.is_drawing and self.current_points:
-                self.draw_points.append(self.current_points)
-                self.current_points = []
-            self.is_drawing = False
 
-        '''Draw a dot (circle) at the current position
-        #cv2.circle(canvas, (x, y), 10, (0, 0, 255), cv2.FILLED)'''
-        for points in self.draw_points:#draw previous drawing from save
-            for i in range(1, len(points)):
-                cv2.line(canvas, points[i - 1], points[i], (0, 0, 255), 10)
-            #draw current drawing
-        for i in range(1, len(self.current_points)):
-            cv2.line(canvas, self.current_points[i - 1], self.current_points[i], (0, 0, 255), 10)
-        if fingers == [1,0,0,0,1]:
-            print('Clearing canvas')
-            self.draw_points = []
-            self.current_points = []
-            self.last_drawn_point = None
-            self.is_drawing = False
-            canvas.fill(0)
+        fingers = self.findFingerUp()
+        h, w, _ = frame.shape
+
+        # Toggle drawing mode on thumbs up
+        if fingers ==  [0, 1, 0, 1, 1]:
+            if self.is_drawing is None:
+                print("Entered drawing mode.")
+                self.is_drawing = False  # Ready to start drawing
+            elif self.is_drawing:  # Exit drawing mode
+                print("Exited drawing mode.")
+                self.is_drawing = None
+            return canvas
+
+        # Inside drawing mode
+        if self.is_drawing is not None:
+            # Start/Continue drawing with 3 fingers (middle, ring, pinky)
+            if fingers == [0, 0, 1, 1, 1]:
+                if not self.is_drawing:
+                    self.current_points = []
+                    self.last_drawn_point = None
+                    self.is_drawing = True
+
+                x, y = self.lmslist[8][1], self.lmslist[8][2]
+                x = max(0, min(x, w - 1))
+                y = max(0, min(y, h - 1))
+
+                if self.last_drawn_point is None or math.hypot(x - self.last_drawn_point[0],
+                                                               y - self.last_drawn_point[1]) > 2:
+                    self.current_points.append((x, y))
+                    self.last_drawn_point = (x, y)
+            else:
+                # Stop drawing and save the stroke
+                if self.is_drawing and self.current_points:
+                    self.draw_points.append(self.current_points)
+                    self.current_points = []
+                self.is_drawing = False
+
+            # Draw previous strokes
+            for points in self.draw_points:
+                for i in range(1, len(points)):
+                    cv2.line(canvas, points[i - 1], points[i], (0, 0, 255), 10)
+
+            # Draw current stroke
+            for i in range(1, len(self.current_points)):
+                cv2.line(canvas, self.current_points[i - 1], self.current_points[i], (0, 0, 255), 10)
+
+            # Clear canvas with thumb and pinky
+            if fingers == [1, 0, 0, 0, 1]:
+                print("Clearing canvas.")
+                self.draw_points = []
+                self.current_points = []
+                self.last_drawn_point = None
+                self.is_drawing = False
+                canvas.fill(0)
+
         return canvas
 
     def screen_shot(self, frame):
@@ -154,19 +175,19 @@ class Handtracking:
         fingers = self.findFingerUp()
         current_time =time.time()
         if fingers == [0, 0, 0, 0, 0] :
-            if int(abs(current_time - self.last_screen_shot)) > 2:
-                img = ImageGrab.grab()
+            if int(abs(current_time - self.last_screen_shot)) > 2: #cooldown 2 sec
+                img = ImageGrab.grab() #grabs the whole screens screenshot
                 self.last_screen_shot = current_time
 
                 #copy to clipboard
-                output = io.BytesIO()
-                img.convert("RGB").save(output, "BMP")
-                data = output.getvalue()[14:]  # BMP file header starts from 14th byte
-                output.close()
+                output = io.BytesIO() #opens a memory byte stream
+                img.convert("RGB").save(output, "BMP") # converts to bitmap image as windows only accepts this not rgb
+                data = output.getvalue()[14:]  # BMP file header starts from 14th byte aas the real data starts from there
+                output.close() # closes the memory stream
 
                 win32clipboard.OpenClipboard()
                 win32clipboard.EmptyClipboard()
-                win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+                win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)#CF_DIB device independent bitmap
                 win32clipboard.CloseClipboard()
                 print("Screenshot copied to clipboard!")
 
@@ -234,7 +255,7 @@ while True:
             curr_x = prev_x + (x3 - prev_x) / smoothening
             curr_y = prev_y + (y3 - prev_y) / smoothening
 
-            autopy.mouse.move(curr_x, curr_y)  # Moving the cursor
+            autopy.mouse.move(screen_width - curr_x, curr_y)  # Moving the cursor
             cv2.circle(frame, (x1, y1), 7, (255, 0, 255), cv2.FILLED)
             prev_x, prev_y = curr_x, curr_y
         # Both index and middle are up : left Clicking mode
