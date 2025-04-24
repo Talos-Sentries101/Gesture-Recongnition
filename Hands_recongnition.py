@@ -181,27 +181,28 @@ class Handtracking:
             plocX, plocY = clocX, clocY
         return frame
         
-        def screen_shot(self, frame, dt=None):
+         def screen_shot(self, frame):
         if not self.lmslist:
             return
         fingers = self.findFingerUp()
         current_time =time.time()
-        timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-        screenshot_path = f"full_screenshot_{timestamp}.png"
         if fingers == [0, 0, 0, 0, 0] :
             if int(abs(current_time - self.last_screen_shot)) > 2:
-
-                screenshot = pyautogui.screenshot()
-
-                screenshot.save(screenshot_path)
-                print(f"Full screen screenshot saved: {screenshot_path}")
+                img = ImageGrab.grab()
                 self.last_screen_shot = current_time
-                
-        if self.is_drawing and fingers == [0, 0, 0, 0, 0] :
-            cv2.imwrite(screenshot_path, canvas)
-            print(f"Drawing canvas screenshot saved: {screenshot_path}")
-            self.last_screen_shot_canvas = current_time
 
+                #copy to clipboard
+                output = io.BytesIO()
+                img.convert("RGB").save(output, "BMP")
+                data = output.getvalue()[14:]  # BMP file header starts from 14th byte
+                output.close()
+
+                win32clipboard.OpenClipboard()
+                win32clipboard.EmptyClipboard()
+                win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+                win32clipboard.CloseClipboard()
+                print("Screenshot copied to clipboard!")
+                
 co=cv2.VideoCapture(0)
 co.set(cv2.CAP_PROP_FRAME_WIDTH,680)
 co.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
