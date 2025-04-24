@@ -4,11 +4,13 @@ import mediapipe as mp
 import cv2
 import math as math
 from ctypes import cast, POINTER
-
+import time
 import pyautogui
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-import screen_brightness_control as sbcontrol
+import io
+from PIL import ImageGrab
+import win32clipboard
 
 
 devices = AudioUtilities.GetSpeakers()
@@ -35,6 +37,9 @@ class Handtracking:
         self.last_drawn_point = None
         self.current_points=[]
         self.last_screen_shot =  float(0)
+
+
+
 # to locate different fingers and draw connections
     def locatefingers(self,frame,draw=True):
         convt_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -143,45 +148,7 @@ class Handtracking:
             canvas.fill(0)
         return canvas
 
-    def findDistance(self, p1, p2, frame, draw=True, r=15, t=3):
-        l1=self.lmslist[p1][1:]
-        l2= self.lmslist[p2][1:]
-        x1, y1 = l1[0],l1[1]
-        x2, y2 = l2[0],l2[1]
-        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-
-        if draw:
-            cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 255), t)
-            cv2.circle(frame, (x1, y1), r, (255, 0, 255), cv2.FILLED)
-            cv2.circle(frame, (x2, y2), r, (255, 0, 255), cv2.FILLED)
-            cv2.circle(frame, (cx, cy), r, (0, 0, 255), cv2.FILLED)
-        length = math.hypot(x2 - x1, y2 - y1)
-
-        return length, frame, [x1, y1, x2, y2, cx, cy]
-    def Mousecontrol(self,frame):
-        frameR = 100  # frame Reduction
-        smoothening = 7
-        plocX, plocY = 0, 0
-        clocX, clocY = 0, 0
-        p1, q1 = self.lmslist[8][1:]
-        p2, q2 = self.lmslist[12][1:]
-        fingers= self.findFingerUp()
-        wScr, hScr = autopy.screen.size()
-        if fingers[1]==1 and fingers[2]==0:
-            x3 = np.interp(p1, (frameR, 640 - frameR), (0, wScr))
-            y3 = np.interp(q1, (frameR, 480 - frameR), (0, hScr))
-
-            # 6. Smoothen Valuse
-            clocX = plocX + (x3 - plocX) / smoothening
-            clocY = plocY + (y3 - plocY) / smoothening
-
-            # 7. Move mouse
-            autopy.mouse.move(wScr - clocX, clocY)
-            cv2.circle(frame, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
-            plocX, plocY = clocX, clocY
-        return frame
-        
-         def screen_shot(self, frame):
+    def screen_shot(self, frame):
         if not self.lmslist:
             return
         fingers = self.findFingerUp()
@@ -202,8 +169,28 @@ class Handtracking:
                 win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
                 win32clipboard.CloseClipboard()
                 print("Screenshot copied to clipboard!")
-                
-co=cv2.VideoCapture(0)
+
+
+
+    def findDistance(self, p1, p2, frame, draw=True, r=15, t=3):
+        l1=self.lmslist[p1][1:]
+        l2= self.lmslist[p2][1:]
+        x1, y1 = l1[0],l1[1]
+        x2, y2 = l2[0],l2[1]
+        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+
+        if draw:
+            cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 255), t)
+            cv2.circle(frame, (x1, y1), r, (255, 0, 255), cv2.FILLED)
+            cv2.circle(frame, (x2, y2), r, (255, 0, 255), cv2.FILLED)
+            cv2.circle(frame, (cx, cy), r, (0, 0, 255), cv2.FILLED)
+        length = math.hypot(x2 - x1, y2 - y1)
+
+        return length, frame, [x1, y1, x2, y2, cx, cy]
+
+
+
+co=cv2.VideoCapture(1)
 co.set(cv2.CAP_PROP_FRAME_WIDTH,680)
 co.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 detector = Handtracking()
@@ -212,13 +199,14 @@ canvas = np.zeros((1280, 720, 3), dtype=np.uint8)
 if not co.isOpened():
     print("Error accesing camera plz check for any access related issue or a camera shutter blocking ")
     exit()
+
 width = 640             # Width of Camera
 height = 480            # Height of Camera
 frameR = 100            # Frame Rate
 smoothening = 8         # Smoothening Factor
 prev_x, prev_y = 0, 0   # Previous coordinates
 curr_x, curr_y = 0, 0   # Current coordinates
-screen_width, screen_height = autopy.screen.size() 
+screen_width, screen_height = autopy.screen.size()
 canvas = np.zeros((1280, 720, 3), dtype=np.uint8)
 wScr, hScr = autopy.screen.size()
 pyautogui.FAILSAFE = False
@@ -274,7 +262,6 @@ while True:
     frame= cv2.GaussianBlur(frame,(5,5),20)
     cv2.imshow('Live Feed', frame)
     cv2.imshow('Drawing Frame ', canvas)
-
     if cv2.waitKey(1) == ord('q'):
         break
 
