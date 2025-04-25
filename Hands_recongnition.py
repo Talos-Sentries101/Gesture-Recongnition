@@ -19,7 +19,7 @@ volume = cast(interface, POINTER(IAudioEndpointVolume))
 minVol, maxVol = volume.GetVolumeRange()[:2]
 
 class Handtracking:
-    def __init__(self, mode=False, limit_hands=2, detection=0.7, tracktion=0.9):
+        def __init__(self, mode=False, limit_hands=2, detection=0.7, tracktion=0.9):
         self.__mode__ = mode
         self.__maxHands__ = limit_hands
         self.__detectionCon__ = detection
@@ -31,12 +31,14 @@ class Handtracking:
             min_tracking_confidence=tracktion)
         self.mpDraw = mp.solutions.drawing_utils
         self.tipIds = [4, 8, 12, 16, 20]
-        #self.on_or_off = 0
         self.is_drawing = False
         self.draw_points =[]
         self.last_drawn_point = None
         self.current_points=[]
         self.last_screen_shot =  float(0)
+        self.last_drawmode_toggle= float(0)
+        self.current_time = time.time()
+        self.drawing_window_open = False
 
 
 
@@ -107,45 +109,42 @@ class Handtracking:
             vol = np.interp(length, [10, 440], [minVol, maxVol])
             volume.SetMasterVolumeLevel(vol, None)
 
-    def draw_mode(self,frame, canvas ):
-        if not self.lmslist:
-            self.is_drawing = False
+        def draw_mode(self, frame, canvas, fingers=None):
+        if fingers is None or not self.lmslist:
             return canvas
-        fingers = self.findFingerUp()
-        h,w,_ = frame.shape
-        if fingers == [ 0,0,1, 1, 1]:
-            if not self.is_drawing:     #staart new drawing sesion if not drawing
-                self.current_points=[]
-                self.last_drawn_point = None
-                self.is_drawing = True
+
+        h, w, _ = frame.shape
+
+
+        if self.is_drawing and fingers == [0, 0, 1, 1, 1]:
             x, y = self.lmslist[8][1], self.lmslist[8][2]
-            x = max(0, min(x, w - 1))   # out of frame
-            y = max(0, min(y, h - 1))   # handling
-            #add point if its the first point and if the distance is more than 3 units
-            if self.last_drawn_point is None or math.hypot(x - self.last_drawn_point[0], y - self.last_drawn_point[1]) > 2:
+            x = max(0, min(x, w - 1))
+            y = max(0, min(y, h - 1))
+
+            if self.last_drawn_point is None or math.hypot(x - self.last_drawn_point[0],
+                                                           y - self.last_drawn_point[1]) > 5:
                 self.current_points.append((x, y))
                 self.last_drawn_point = (x, y)
-        else: #terminate between drawing and save previous drawing
+        else:
             if self.is_drawing and self.current_points:
                 self.draw_points.append(self.current_points)
                 self.current_points = []
-            self.is_drawing = False
+            self.last_drawn_point = None
 
-        '''Draw a dot (circle) at the current position
-        #cv2.circle(canvas, (x, y), 10, (0, 0, 255), cv2.FILLED)'''
-        for points in self.draw_points:#draw previous drawing from save
+        for points in self.draw_points:
             for i in range(1, len(points)):
                 cv2.line(canvas, points[i - 1], points[i], (0, 0, 255), 10)
-            #draw current drawing
         for i in range(1, len(self.current_points)):
             cv2.line(canvas, self.current_points[i - 1], self.current_points[i], (0, 0, 255), 10)
-        if fingers == [1,0,0,0,1]:
+
+        if fingers == [1, 0, 0, 0, 1]:
             print('Clearing canvas')
             self.draw_points = []
             self.current_points = []
             self.last_drawn_point = None
-            self.is_drawing = False
             canvas.fill(0)
+
+
         return canvas
 
     def screen_shot(self, frame):
@@ -194,7 +193,9 @@ co=cv2.VideoCapture(1)
 co.set(cv2.CAP_PROP_FRAME_WIDTH,680)
 co.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 detector = Handtracking()
-canvas = np.zeros((1280, 720, 3), dtype=np.uint8)
+
+canvas = np.zeros((1080, 1920, 3), dtype=np.uint8)
+draw_toggle_gesture= [0,1,0,0,1]
 
 if not co.isOpened():
     print("Error accesing camera plz check for any access related issue or a camera shutter blocking ")
@@ -216,9 +217,32 @@ while True:
         print("Can't receive frame (stream end?). Exiting ...")
         break
     frame = cv2.flip(frame, 1)
-
     frame = detector.locatefingers(frame)
     lmslist= detector.trackposition(frame)
+    fingers = detector.findFingerUp()
+    current_time = time.time()
+    # Drawing toggle gesture
+    if fingers == draw_toggle_gesture:
+        if abs(current_time - detector.last_drawmode_toggle) > 2:
+            detector.is_drawing = not detector.is_drawing
+            print(f"Draw mode toggled: {detector.is_drawing}")
+            detector.last_drawmode_toggle = current_time
+
+    canvas = detector.draw_mode(frame, canvas, fingers)
+
+    if detector.is_drawing and abs(current_time - detector.last_drawmode_toggle) > 1:
+
+        cv2.imshow('Drawing Frame', canvas)
+
+        cv2.putText(frame, "DRAW MODE ON", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)
+
+        detector.drawing_window_open = True
+    else:
+        if detector.drawing_window_open:
+            cv2.destroyWindow('Drawing Frame')
+            detector.drawing_window_open = False
+
+
     if len(lmslist) != 0:
         temp= lmslist[8][1:]
         temp2=lmslist[12][1:]
