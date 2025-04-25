@@ -158,7 +158,7 @@ class Handtracking:
         for i in range(1, len(self.current_points)):
             cv2.line(canvas, self.current_points[i - 1], self.current_points[i], (0, 0, 255), 10)
 
-        if fingers == [1, 0, 0, 0, 1]:
+        if fingers == [0, 0, 0, 0, 1]:
             print('Clearing canvas')
             self.draw_points = []
             self.current_points = []
@@ -173,7 +173,7 @@ class Handtracking:
             return
         fingers = self.findFingerUp()
         current_time =time.time()
-        if fingers == [0, 0, 0, 0, 0] :
+        if fingers == [1, 0, 1, 1, 1] :
             if int(abs(current_time - self.last_screen_shot)) > 2:
                 img = ImageGrab.grab()
                 self.last_screen_shot = current_time
@@ -199,11 +199,11 @@ class Handtracking:
         x2, y2 = l2[0],l2[1]
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
 
-        if draw:
-            cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 255), t)
-            cv2.circle(frame, (x1, y1), r, (255, 0, 255), cv2.FILLED)
-            cv2.circle(frame, (x2, y2), r, (255, 0, 255), cv2.FILLED)
-            cv2.circle(frame, (cx, cy), r, (0, 0, 255), cv2.FILLED)
+        #if draw:
+            #cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 255), t)
+            #cv2.circle(frame, (x1, y1), r, (255, 0, 255), cv2.FILLED)
+            #cv2.circle(frame, (x2, y2), r, (255, 0, 255), cv2.FILLED)
+            #cv2.circle(frame, (cx, cy), r, (0, 0, 255), cv2.FILLED)
         length = math.hypot(x2 - x1, y2 - y1)
 
         return length, frame, [x1, y1, x2, y2, cx, cy]
@@ -296,6 +296,7 @@ wScr, hScr = autopy.screen.size()
 pyautogui.FAILSAFE = False
 prev_positions = []
 threshold = 5
+max_clicks = 3
 while True:
     ret, frame = co.read()
     if not ret:
@@ -347,19 +348,12 @@ while True:
             autopy.mouse.move(curr_x, curr_y)  # Moving the cursor
             cv2.circle(frame, (x1, y1), 7, (255, 0, 255), cv2.FILLED)
             prev_x, prev_y = curr_x, curr_y
-        '''if fingers== [0,1,0,0,0]:
-            x3 = np.interp(x1, (frameR, width - frameR), (0, screen_width))
-            y3 = np.interp(y1, (frameR, height - frameR), (0, screen_height))
-
-            curr_x = prev_x + (x3 - prev_x) / smoothening
-            curr_y = prev_y + (y3 - prev_y) / smoothening
-            if curr_y>prev_y:
-                pyautogui.scroll(-10)
-            elif curr_y<prev_y:
-                pyautogui.scroll(10)
-
-            prev_x, prev_y = curr_x, curr_y
-            print('ok')'''
+        if fingers== [1,0,0,0,0]:
+            pyautogui.scroll(-60)
+            time.sleep(0.2)
+        if fingers == [1,1,1,1,1]:
+            pyautogui.scroll(60)
+            time.sleep(0.2)
         # Both index and middle are up : left Clicking mode
         if fingers[1] == 1 and fingers[2] == 1:
 
@@ -367,8 +361,9 @@ while True:
 
 
             if length < 40:
-                #cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
+                cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
                 autopy.mouse.click()
+
 
             # Both index and middle are up : Right Clicking mode
         if fingers[1] == 1 and fingers[2] == 1:
@@ -376,7 +371,7 @@ while True:
             if length < 20 :
                 #cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
                 autopy.mouse.click(button=autopy.mouse.Button.RIGHT)
-        if fingers[0]== 0 and fingers[2]==1:
+        if fingers[0]== 0 and fingers[2]==1 and fingers[1]==0:
            tolarence=time.time()
            length, frame, lineInfo = detector.findDistance(4, 12, frame)
            cv2.circle(frame,(lineInfo[4],lineInfo[5]),18,(0,255,0),cv2.FILLED)
