@@ -133,7 +133,9 @@ def distance(x1, y1, x2, y2):
 
 
 final_frame = None
+draw_frame = None
 gesture = None
+mode = False
 detector = HandTracking()
 
 
@@ -149,7 +151,7 @@ def camera_status():
 
 @app.route("/gesture_status")
 def gesture_status():
-    return jsonify({"status": gesture})
+    return jsonify({"status": gesture, "mode": mode})
 
 
 def camera_is_connected():
@@ -160,8 +162,7 @@ def camera_is_connecting():
     return False
 
 
-def encode_frames_for_http():
-    global final_frame
+def encode_frames_for_http(final_frame):
     while True:
         if final_frame is not None:
             if len(final_frame.shape) == 2:
@@ -183,8 +184,19 @@ def encode_frames_for_http():
 
 @app.route("/video_feed")
 def video_feed():
+    global final_frame
     return Response(
-        encode_frames_for_http(), mimetype="multipart/x-mixed-replace; boundary=frame"
+        encode_frames_for_http(final_frame),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
+
+
+@app.route("/draw_feed")
+def draw_feed():
+    global draw_frame
+    return Response(
+        encode_frames_for_http(draw_frame),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
     )
 
 
@@ -205,7 +217,7 @@ def smoothen(cx, cy, px, py, sf, mt):
 
 
 def main():
-    global final_frame
+    global final_frame, draw_frame, gesture, mode
     vc = cv2.VideoCapture(0)
     mouse = Controller()
 
