@@ -1,32 +1,79 @@
-# Gesture-Recongnition
-
-Gesture recognition webapp to control Pc with hand gestures.
-Used Libreries:
-OpenCv
-Mediapipe
-numpy
-pycaw
-
-gestures :
-![image](https://github.com/user-attachments/assets/9f92ef2f-c5bb-48d0-8ae0-f2cfc247d389) 
 
 
+# 🖐️ Hand Gesture Recognition System
+
+A real-time **gesture control** project built using **OpenCV**, **MediaPipe**, and **NumPy** for intuitive interaction using hand gestures. Control your screen, draw, scroll, and more — with just your hands!
+
+---
+
+## ✨ Features
+
+- 🔽 **Scroll Down**  
+  ➤ **Closed fist** (✊): All fingers down.
+
+- 🔼 **Scroll Up**  
+  ➤ **All fingers up except the thumb** (🖐️).
+
+- 🔊 **Volume Control**  
+  ➤ **Middle finger and thumb pinch** (🤏): Pinch to raise/lower volume.
+
+- 📸 **Take Screenshot**  
+  ➤ **OK gesture** (👌): Index and thumb form a circle — **only in normal mode**.
+
+- 🎨 **Toggle Drawing Mode**  
+  ➤ **Index and pinky up** (🤘): Switch **drawing mode** on/off.
+
+- 🧹 **Clear Canvas**  
+  ➤ **Thumb and pinky up** (🤙): Clear the current drawing **only in drawing mode**.
+
+---
+
+## 🧰 Libraries Used
+
+- 🔷 **[OpenCV](https://opencv.org/)** – Real-time video capture and image processing  
+- ✋ **[MediaPipe](https://mediapipe.dev/)** – Hand tracking and landmark detection  
+- 📐 **[NumPy](https://numpy.org/)** – Numerical calculations and array ops  
+- 🪟 **[pywin32 / win32clipboard](https://pypi.org/project/pywin32/)** – Clipboard and Windows screenshot support
 
 
-for eraser 
 
+---
 
-and
-![image](https://github.com/user-attachments/assets/4d843618-ce59-4461-bfb3-2ef8bb5dc304)
+## ✋ Gesture Cheat Sheet
 
+| 🖼️ Gesture | 💥 Action |
+|:----------:|:----------|
+| ✊ **Closed fist** | 🔽 Scroll down |
+| 🖐️ **All except thumb up** | 🔼 Scroll up |
+| 🤏 **Middle + thumb pinch** | 🔊 Volume control |
+| 👌 **OK symbol** | 📸 Screenshot (normal mode only) |
+| 🤘 **Index + pinky up** | 🎨 Toggle draw mode |
+| 🤙 **Thumb + pinky up** | 🧹 Clear canvas |
 
+---
 
+## ⚙️ Setup Instructions
 
+```bash
+pip install opencv-python mediapipe numpy pywin32
+```
 
-for drawing tool
+▶️ Then run your main script:
 
+```bash
+python your_main_script.py
+```
 
-and ![image](https://github.com/user-attachments/assets/c3c67cf8-0093-4b85-b4b6-2fc7f9d4c023)
+📷 **Make sure your webcam is connected and accessible!**
 
-for activation and termination of drawing mode hold for 2 seconds 
+---
+
+## 🗒️ Notes
+
+- ✂️ **Pinch-related functions** are **removed** and **reserved for future gestures**.
+- 🧠 Gestures are designed for **natural use**, **speed**, and **reliability**.
+
+---
+
+## 💡 Built with ❤️ using OpenCV, MediaPipe & Python
 
