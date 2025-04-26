@@ -13,7 +13,7 @@ import win32clipboard
 from PIL import ImageGrab
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-import screen_brightness_control as sbcontrol
+import screen_brightness_control as sbc
 
 devices = AudioUtilities.GetSpeakers()
 interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
@@ -43,6 +43,9 @@ def is_muted():
 
 class Handtracking:
     def __init__(self, mode=False, limit_hands=1, detection=0.7, tracktion=0.7):
+        self.bounding_box = None
+        self.xmin, self.xmax = 0,0
+        self.ymin, self.ymax= 0,0
         self.__mode__ = mode # Mode to toggle to different modes
         self.__maxHands__ = limit_hands #max no of hands detected
         self.__detectionCon__ = detection #detection factor
@@ -90,11 +93,11 @@ class Handtracking:
                y_cords.append(cy)
                self.lmslist.append([id,cx,cy,cz])
                if draw: cv2.circle(frame,(cx,cy),5,(255,0,255),cv2.FILLED)
-           xmin,xmax= min(x_cords),max(x_cords)
-           ymin,ymax= min(y_cords),max(y_cords)
-           bounding_box = xmin,ymin,xmax,ymax
-           '''if draw:
-               cv2.rectangle(frame, (xmin - 20, ymin - 20), (xmax + 20, ymax + 20), (0, 255, 0), 2)'''
+           self.xmin,self.xmax= min(x_cords),max(x_cords)
+           self.ymin,self.ymax= min(y_cords),max(y_cords)
+           bounding_box = self.xmin,self.ymin,self.xmax,self.ymax
+           if draw:
+               cv2.rectangle(frame, (self.xmin - 20, self.ymin - 20), (self.xmax + 20, self.ymax + 20), (0, 255, 0), 2)
        return self.lmslist
 
     def findFingerUp(self):
@@ -107,6 +110,8 @@ class Handtracking:
         #             x co-ord for thumb tip >  x co-ord for thumb mid
         if self.lmslist[self.tipIds[0]][1] > self.lmslist[self.tipIds[0] - 1][1]:
             fingers.append(1)
+        #elif self.lmslist[self.tipIds[0]][1]>self.lmslist[self.tipIds[0]-1][2]:
+            #fingers.append(2)
         else:
             fingers.append(0)
         for id in range(1, 5):
@@ -145,7 +150,7 @@ class Handtracking:
             y = max(0, min(y, h - 1))
 
             if self.last_drawn_point is None or math.hypot(x - self.last_drawn_point[0],
-                                                           y - self.last_drawn_point[1]) > 5:
+                                                           y - self.last_drawn_point[1]) > 2:
                 self.current_points.append((x, y))
                 self.last_drawn_point = (x, y)
         else:
@@ -314,10 +319,8 @@ while True:
             print(f"Draw mode toggled: {detector.is_drawing}")
             detector.last_drawmode_toggle = current_time
 
-    canvas = detector.draw_mode(frame, canvas, fingers)
-
-    if detector.is_drawing and abs(current_time - detector.last_drawmode_toggle) > 1:
-
+    if detector.is_drawing and abs(current_time - detector.last_drawmode_toggle) > 2:
+        canvas = detector.draw_mode(frame, canvas, fingers)
         cv2.imshow('Drawing Frame', canvas)
 
         cv2.putText(frame, "DRAW MODE ON", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)
@@ -362,15 +365,13 @@ while True:
                 if length < 40:
                     cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
                     autopy.mouse.click()
-
-
                 # Both index and middle are up : Right Clicking mode
             if fingers[1] == 1 and fingers[2] == 1:
                 length, frame, lineInfo = detector.findDistance(4, 20, frame)
                 if length < 20 :
                     #cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
                     autopy.mouse.click(button=autopy.mouse.Button.RIGHT)
-            if fingers[0]== 0 and fingers[2]==1 and fingers[1]==0:
+            if fingers[0]== 0 and fingers[2]==1 and fingers[1]==0 and fingers[4]==0:
                 tolarence=time.time()
                 length, frame, lineInfo = detector.findDistance(4, 12, frame)
                 cv2.circle(frame,(lineInfo[4],lineInfo[5]),18,(0,255,0),cv2.FILLED)
@@ -380,145 +381,14 @@ while True:
                 if tolarence > threshold:
                     #if length <
                     volume.SetMasterVolumeLevel(vol, None)
-    detector.current_time= current_time
-    detector.screen_shot(frame)
-    frame= cv2.GaussianBlur(frame,(5,5),20)
-    cv2.imshow('Live Feed', frame)
+                    time.sleep(0.1)
+            if fingers== [0,0,0,0,1]:
+                length, frame, lineInfo = detector.findDistance(4, 20, frame)
+                cv2.circle(frame, (lineInfo[4], lineInfo[5]), 18, (0, 255, 0), cv2.FILLED)
+                b_level = np.interp(length, [20, 300], [0, 100])
+                # set brightness
+                sbc.set_brightness(int(b_level))
 
-    if cv2.waitKey(1) == ord('q'):
-        break
-
-co.release()
-cv2.destroyAllWindows()
-        distsq = delta_x ** 2 + delta_y ** 2
-        ratio = 1
-        prev_hand = [x, y]
-
-        if distsq <= 25:
-            ratio = 0
-        elif distsq <= 900:
-            ratio = 0.07 * (distsq ** (1 / 2))
-        else:
-            ratio = 2.1
-        x, y = x_old + delta_x * ratio, y_old + delta_y * ratio
-        return (x, y)
-    def getpinchylv(self):
-        """returns distance beween starting pinch y coord and current hand position y coord."""
-        dist = round((pinchstartycoord - self.lmslist[8][1]) * 10, 1)
-        return dist
-
-    def getpinchxlv(self):
-        """returns distance beween starting pinch x coord and current hand position x coord."""
-        dist = round((self.lmslist[8][0] - Controller.pinchstartxcoord) * 10, 1)
-        return dist
-
-co=cv2.VideoCapture(0)
-co.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
-co.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-detector = Handtracking()
-canvas = np.zeros((1280, 720, 3), dtype=np.uint8)
-
-if not co.isOpened():
-    print("Error accesing camera plz check for any access related issue or a camera shutter blocking ")
-    exit()
-width = 1280             # Width of Camera
-height = 720            # Height of Camera
-frameR = 60          # Frame Rate
-smoothening = 8         # Smoothening Factor
-prev_x, prev_y = 0, 0   # Previous coordinates
-curr_x, curr_y = 0, 0   # Current coordinates
-screen_width, screen_height = autopy.screen.size()
-canvas = np.zeros((1080, 1920, 3), dtype=np.uint8)
-draw_toggle_gesture= [0,1,0,0,1]
-wScr, hScr = autopy.screen.size()
-pyautogui.FAILSAFE = False
-prev_positions = []
-threshold = 5
-max_clicks = 3
-while True:
-    ret, frame = co.read()
-    if not ret:
-        print("Can't receive frame (stream end?). Exiting ...")
-        break
-    frame = cv2.flip(frame, 1)
-
-    frame = detector.locatefingers(frame)
-    lmslist= detector.trackposition(frame)
-    fingers = detector.findFingerUp()
-    current_time = time.time()
-    if fingers == draw_toggle_gesture:
-        if abs(current_time - detector.last_drawmode_toggle) > 5:
-            detector.is_drawing = not detector.is_drawing
-            print(f"Draw mode toggled: {detector.is_drawing}")
-            detector.last_drawmode_toggle = current_time
-
-    canvas = detector.draw_mode(frame, canvas, fingers)
-
-    if detector.is_drawing and abs(current_time - detector.last_drawmode_toggle) > 1:
-
-        cv2.imshow('Drawing Frame', canvas)
-
-        cv2.putText(frame, "DRAW MODE ON", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)
-
-        detector.drawing_window_open = True
-    else:
-        if detector.drawing_window_open:
-            cv2.destroyWindow('Drawing Frame')
-            detector.drawing_window_open = False
-
-
-    if len(lmslist) != 0:
-        temp= lmslist[8][1:]
-        temp2=lmslist[12][1:]
-        x1, y1 = temp[0],temp[1]
-        x2, y2 = temp2[0],temp2[1]
-        # 3. Check which finger are up
-        fingers = detector.findFingerUp()
-        # 4. Only index finger: Moving mode
-        if fingers[0]==1 and fingers[1] == 1 and fingers[2] == 0 and fingers[3]==0 and fingers[4]==0:
-            x3 = np.interp(x1, (frameR, width - frameR), (0, screen_width))
-            y3 = np.interp(y1, (frameR, height - frameR), (0, screen_height))
-
-            curr_x = prev_x + (x3 - prev_x) / smoothening
-            curr_y = prev_y + (y3 - prev_y) / smoothening
-            #pyautogui.moveTo(curr_x, curr_y)
-
-            autopy.mouse.move(curr_x, curr_y)  # Moving the cursor
-            cv2.circle(frame, (x1, y1), 7, (255, 0, 255), cv2.FILLED)
-            prev_x, prev_y = curr_x, curr_y
-        if fingers== [1,0,0,0,0]:
-            pyautogui.scroll(-60)
-            time.sleep(0.2)
-        if fingers == [1,1,1,1,1]:
-            pyautogui.scroll(60)
-            time.sleep(0.2)
-        # Both index and middle are up : left Clicking mode
-        if fingers[1] == 1 and fingers[2] == 1:
-
-            length, frame, lineInfo = detector.findDistance(8, 12, frame)
-
-
-            if length < 40:
-                cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
-                autopy.mouse.click()
-
-
-            # Both index and middle are up : Right Clicking mode
-        if fingers[1] == 1 and fingers[2] == 1:
-            length, frame, lineInfo = detector.findDistance(4, 20, frame)
-            if length < 20 :
-                #cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
-                autopy.mouse.click(button=autopy.mouse.Button.RIGHT)
-        if fingers[0]== 0 and fingers[2]==1 and fingers[1]==0:
-           tolarence=time.time()
-           length, frame, lineInfo = detector.findDistance(4, 12, frame)
-           cv2.circle(frame,(lineInfo[4],lineInfo[5]),18,(0,255,0),cv2.FILLED)
-           vol = np.interp(int(length), [30, 300], [minVol, maxVol])
-           if is_muted():
-               volume.SetMute(0, None)
-           if tolarence > threshold:
-               #if length <
-               volume.SetMasterVolumeLevel(vol, None)
     detector.current_time= current_time
     detector.screen_shot(frame)
     frame= cv2.GaussianBlur(frame,(5,5),20)
