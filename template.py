@@ -162,21 +162,6 @@ class Handtracking:
 
         return fingers
 
-
-    def Volumecontrol(self,frame):
-        if len(self.lmslist) != 0:
-            x1, y1 = self.lmslist[4][1], self.lmslist[4][2]  # thumb
-            x2, y2 = self.lmslist[8][1], self.lmslist[8][2]  # index finger
-            # Marking Thumb and Index finger
-            cv2.circle(frame, (x1, y1), 15, (255, 255, 255))
-            cv2.circle(frame, (x2, y2), 15, (255, 255, 255))
-            cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
-            length = math.hypot(x2 - x1, y2 - y1)
-            if length < 10:
-                cv2.line(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
-            vol = np.interp(length, [30, 350], [minVol, maxVol])
-            volume.SetMasterVolumeLevel(vol, None)
-
     def draw_mode(self, frame, canvas, fingers=None):
         if fingers is None or not self.lmslist:
             return canvas
