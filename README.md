@@ -1,6 +1,3 @@
-Here’s your updated and polished **README.md** with **highlighted keywords**, **emojis**, and a few small grammar fixes for flow. 🚀✨  
-
----
 
 # 🖐️ Hand Gesture Recognition System
 
