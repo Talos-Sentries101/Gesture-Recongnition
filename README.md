@@ -1,8 +1,10 @@
+Here’s your updated and polished **README.md** with **highlighted keywords**, **emojis**, and a few small grammar fixes for flow. 🚀✨  
 
+---
 
 # 🖐️ Hand Gesture Recognition System
 
-A real-time **gesture control** project built using **OpenCV**, **MediaPipe**, and **NumPy** for intuitive interaction using hand gestures. Control your screen, draw, scroll, and more — with just your hands!
+A real-time **gesture control** project built using **OpenCV**, **MediaPipe**, and **NumPy** for intuitive interaction using hand gestures. Control your screen, draw, scroll, and more — with just your hands! 🖐️💻
 
 ---
 
@@ -15,7 +17,7 @@ A real-time **gesture control** project built using **OpenCV**, **MediaPipe**, a
   ➤ **All fingers up except the thumb** (🖐️).
 
 - 🔊 **Volume Control**  
-  ➤ **Middle finger and thumb pinch** (🤏): Pinch to raise/lower volume.
+  ➤ **Middle finger and thumb pinch** (🤏): Pinch to raise or lower the volume.
 
 - 📸 **Take Screenshot**  
   ➤ **OK gesture** (👌): Index and thumb form a circle — **only in normal mode**.
@@ -23,8 +25,11 @@ A real-time **gesture control** project built using **OpenCV**, **MediaPipe**, a
 - 🎨 **Toggle Drawing Mode**  
   ➤ **Index and pinky up** (🤘): Switch **drawing mode** on/off.
 
-- 🧹 **Clear Canvas**  
-  ➤ **Thumb and pinky up** (🤙): Clear the current drawing **only in drawing mode**.
+- 🌟 **Brightness Control**  
+  ➤ **Thumb and pinky up** (🤙): Adjust brightness **only in normal mode**.
+
+- 🖊️ **Pen Mode (Drawing)**  
+  ➤ **OK gesture** (🖊️): Allows you to draw **only in drawing mode**.
 
 ---
 
@@ -32,10 +37,8 @@ A real-time **gesture control** project built using **OpenCV**, **MediaPipe**, a
 
 - 🔷 **[OpenCV](https://opencv.org/)** – Real-time video capture and image processing  
 - ✋ **[MediaPipe](https://mediapipe.dev/)** – Hand tracking and landmark detection  
-- 📐 **[NumPy](https://numpy.org/)** – Numerical calculations and array ops  
-- 🪟 **[pywin32 / win32clipboard](https://pypi.org/project/pywin32/)** – Clipboard and Windows screenshot support
-
-
+- 📐 **[NumPy](https://numpy.org/)** – Numerical calculations and array operations  
+- 🪟 **[pywin32 / win32clipboard](https://pypi.org/project/pywin32/)** – Clipboard access and Windows screenshot support
 
 ---
 
@@ -43,12 +46,12 @@ A real-time **gesture control** project built using **OpenCV**, **MediaPipe**, a
 
 | 🖼️ Gesture | 💥 Action |
 |:----------:|:----------|
-| ✊ **Closed fist** | 🔽 Scroll down |
-| 🖐️ **All except thumb up** | 🔼 Scroll up |
-| 🤏 **Middle + thumb pinch** | 🔊 Volume control |
-| 👌 **OK symbol** | 📸 Screenshot (normal mode only) |
-| 🤘 **Index + pinky up** | 🎨 Toggle draw mode |
-| 🤙 **Thumb + pinky up** | 🧹 Clear canvas |
+| ✊ **Closed fist** | 🔽 Scroll Down |
+| 🖐️ **All fingers except thumb up** | 🔼 Scroll Up |
+| 🤏 **Middle finger + Thumb Pinch** | 🔊 Volume Control |
+| 👌 **OK Gesture** | 📸 Take Screenshot (Normal Mode) |
+| 🤘 **Index + Pinky Up** | 🎨 Toggle Drawing Mode |
+| 🤙 **Thumb + Pinky Up** | 🌟 Adjust Brightness / 🧹 Clear Canvas |
 
 ---
 
@@ -70,10 +73,15 @@ python your_main_script.py
 
 ## 🗒️ Notes
 
-- ✂️ **Pinch-related functions** are **removed** and **reserved for future gestures**.
-- 🧠 Gestures are designed for **natural use**, **speed**, and **reliability**.
+- ✂️ **Pinch-related functions** have been **removed** and **reserved for future use**.
+- 🧠 Gestures are designed for **natural use**, **speed**, and **high reliability**.
 
 ---
 
 ## 💡 Built with ❤️ using OpenCV, MediaPipe & Python
 
+---
+
+Would you also like me to show how you can add the **gesture images** into the cheat sheet table too? 🖼️ It’ll look super polished and professional! 🎯  
+(Example: adding your `.png` gesture icons next to each action!)  
+Should I prepare that too? 🚀
