@@ -313,12 +313,13 @@ def draw_activate(canvas):
         if abs(current_time - detector.last_drawmode_toggle) > 5:
             detector.is_drawing = not detector.is_drawing
             print(f"Draw mode toggled: {detector.is_drawing}")
+            mode = detector.is_drawing
             detector.last_drawmode_toggle = current_time
             global drawing_mode_on_off=f"Draw mode toggled: {detector.is_drawing}"
 
     if detector.is_drawing and abs(current_time - detector.last_drawmode_toggle) > 2:
         canvas = detector.draw_mode(frame, canvas, fingers)
-        cv2.imshow('Drawing Frame', canvas)
+        draw_frame =cv2.imshow('Drawing Frame', canvas)
 
         cv2.putText(frame, "DRAW MODE ON", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)
         detector.drawing_window_open = True
@@ -515,7 +516,7 @@ def main():
             detector.current_time= current_time
             detector.screen_shot(frame)
             frame= cv2.GaussianBlur(frame,(5,5),20)
-            cv2.imshow('Live Feed', frame)
+            final_frame= cv2.imshow('Live Feed', frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 vc.release()
                 cv2.destroyAllWindows()
