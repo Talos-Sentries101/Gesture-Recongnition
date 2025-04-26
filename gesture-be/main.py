@@ -1,20 +1,22 @@
-from flask import Flask, Response, jsonify
-from flask_cors import CORS
 import io
+import math as math
+import time
+from ctypes import POINTER, cast
+
 import autopy
 import comtypes
-import numpy as np
-import mediapipe as mp
 import cv2
-import math as math
-from ctypes import cast, POINTER
-import time
+import mediapipe as mp
+import numpy as np
 import pyautogui
-import win32clipboard
-from PIL import ImageGrab
-from comtypes import CLSCTX_ALL
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 import screen_brightness_control as sbc
+import win32clipboard
+from comtypes import CLSCTX_ALL
+from flask import Flask, Response, jsonify
+from flask_cors import CORS
+from PIL import ImageGrab
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+
 app = Flask(__name__)
 CORS(app)
 devices = AudioUtilities.GetSpeakers()
@@ -27,6 +29,7 @@ def is_muted():
     interface = devices.Activate(IAudioEndpointVolume._iid_, comtypes.CLSCTX_ALL, None)
     volume = interface.QueryInterface(IAudioEndpointVolume)
     return volume.GetMute()
+
 class Handtracking:
     def __init__(self, mode=False, limit_hands=1, detection=0.7, tracktion=0.7):
         self.bounding_box = None
@@ -173,7 +176,8 @@ class Handtracking:
             x, y = self.lmslist[8][1], self.lmslist[8][2]
             x = max(0, min(x, w - 1))
             y = max(0, min(y, h - 1))
-            global screenshoot_pencil='Drawing'
+            global gesture
+            gesture = "screenshoot_pencil"
 
             if self.last_drawn_point is None or math.hypot(x - self.last_drawn_point[0],
                                                            y - self.last_drawn_point[1]) > 2:
@@ -197,7 +201,8 @@ class Handtracking:
             self.current_points = []
             self.last_drawn_point = None
             canvas.fill(0)
-            global brightness_eraser = 'Erasing'
+            global gesture
+            gesture = "brightness_eraser"
 
 
         return canvas
@@ -223,7 +228,8 @@ class Handtracking:
                 win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
                 win32clipboard.CloseClipboard()
                 print("Screenshot copied to clipboard!")
-                global screenshot_pencil='Screensshot taken'
+                global gesture
+                gesture = "screenshoot_pencil"
 
 
 
@@ -313,12 +319,13 @@ def draw_activate(canvas):
         if abs(current_time - detector.last_drawmode_toggle) > 5:
             detector.is_drawing = not detector.is_drawing
             print(f"Draw mode toggled: {detector.is_drawing}")
+            mode = detector.is_drawing
             detector.last_drawmode_toggle = current_time
             global drawing_mode_on_off=f"Draw mode toggled: {detector.is_drawing}"
 
     if detector.is_drawing and abs(current_time - detector.last_drawmode_toggle) > 2:
         canvas = detector.draw_mode(frame, canvas, fingers)
-        cv2.imshow('Drawing Frame', canvas)
+        draw_frame =cv2.imshow('Drawing Frame', canvas)
 
         cv2.putText(frame, "DRAW MODE ON", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)
         detector.drawing_window_open = True
@@ -332,7 +339,7 @@ final_frame = None
 draw_frame = None
 gesture = None
 mode = False
-detector = HandTracking()
+detector = Handtracking()
 
 
 @app.route("/camera_status")
@@ -394,12 +401,6 @@ def draw_feed():
         encode_frames_for_http(draw_frame),
         mimetype="multipart/x-mixed-replace; boundary=frame",
     )
-
-
-@throttle(10)
-def move(x, y, mouse):
-    mouse.position = (x, y)
-
 
 def smoothen(cx, cy, px, py, sf, mt):
     smoothed_x = px + (cx - px) * sf
@@ -473,16 +474,16 @@ def main():
         
                         autopy.mouse.move(curr_x, curr_y)  # Moving the cursor
                         cv2.circle(frame, (x1, y1), 7, (255, 0, 255), cv2.FILLED)
-                        global mouse_track = 'Mouse mode'
+                        gesture = "mouse_tracking"
                         prev_x, prev_y = curr_x, curr_y
                     if fingers== [1,0,0,0,0]:
                         pyautogui.scroll(-60)
                         time.sleep(0.2)
-                        global scroll_down = 'Scrolling down'
+                        gesture = "scroll_down"
                     if fingers == [1,1,1,1,1]:
                         pyautogui.scroll(60)
                         time.sleep(0.2)
-                        global scroll_up= 'Scrolling Up'
+                        gesture = "scrroll_up"
                     # Both index and middle are up : left Clicking mode
                     if fingers[1] == 1 and fingers[2] == 1:
         
@@ -492,7 +493,7 @@ def main():
                         if length < 40:
                             cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
                             autopy.mouse.click()
-                         global double_tap=='click mode'   
+                            gesture = "double_tap"   
                         # Both index and middle are up : Right Clicking mode
                     if fingers[1] == 1 and fingers[2] == 1:
                         length, frame, lineInfo = detector.findDistance(4, 20, frame)
@@ -510,18 +511,18 @@ def main():
                         b_level = np.interp(length, [20, 300], [0, 100])
                         # set brightness
                         sbc.set_brightness(int(b_level))
-                        global  brightness_eraser = 'Brightness contorl'
+                        gesture = 'brightness_eraser'
         
             detector.current_time= current_time
             detector.screen_shot(frame)
             frame= cv2.GaussianBlur(frame,(5,5),20)
-            cv2.imshow('Live Feed', frame)
+            final_frame= cv2.imshow('Live Feed', frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
-                vc.release()
+                co.release()
                 cv2.destroyAllWindows()
                 exit()
     finally:
-        vc.release()
+        co.release()
         cv2.destroyAllWindows()
 
 
