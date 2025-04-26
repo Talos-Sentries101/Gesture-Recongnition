@@ -188,6 +188,7 @@ class Handtracking:
             x, y = self.lmslist[8][1], self.lmslist[8][2]
             x = max(0, min(x, w - 1))
             y = max(0, min(y, h - 1))
+            global screenshoot_pencil='Drawing'
 
             if self.last_drawn_point is None or math.hypot(x - self.last_drawn_point[0],
                                                            y - self.last_drawn_point[1]) > 2:
@@ -211,6 +212,7 @@ class Handtracking:
             self.current_points = []
             self.last_drawn_point = None
             canvas.fill(0)
+            global brightness_eraser = 'Erasing'
 
 
         return canvas
@@ -236,6 +238,7 @@ class Handtracking:
                 win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
                 win32clipboard.CloseClipboard()
                 print("Screenshot copied to clipboard!")
+                global screenshot_pencil='Screensshot taken'
 
 
 
@@ -326,6 +329,7 @@ def draw_activate(canvas):
             detector.is_drawing = not detector.is_drawing
             print(f"Draw mode toggled: {detector.is_drawing}")
             detector.last_drawmode_toggle = current_time
+            global drawing_mode_on_off=f"Draw mode toggled: {detector.is_drawing}"
 
     if detector.is_drawing and abs(current_time - detector.last_drawmode_toggle) > 2:
         canvas = detector.draw_mode(frame, canvas, fingers)
@@ -484,13 +488,16 @@ def main():
         
                         autopy.mouse.move(curr_x, curr_y)  # Moving the cursor
                         cv2.circle(frame, (x1, y1), 7, (255, 0, 255), cv2.FILLED)
+                        global mouse_track = 'Mouse mode'
                         prev_x, prev_y = curr_x, curr_y
                     if fingers== [1,0,0,0,0]:
                         pyautogui.scroll(-60)
                         time.sleep(0.2)
+                        global scroll_down = 'Scrolling down'
                     if fingers == [1,1,1,1,1]:
                         pyautogui.scroll(60)
                         time.sleep(0.2)
+                        global scroll_up= 'Scrolling Up'
                     # Both index and middle are up : left Clicking mode
                     if fingers[1] == 1 and fingers[2] == 1:
         
@@ -500,12 +507,14 @@ def main():
                         if length < 40:
                             cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
                             autopy.mouse.click()
+                         global double_tap=='click mode'   
                         # Both index and middle are up : Right Clicking mode
                     if fingers[1] == 1 and fingers[2] == 1:
                         length, frame, lineInfo = detector.findDistance(4, 20, frame)
                         if length < 30 :
                             cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
                             autopy.mouse.click(button=autopy.mouse.Button.RIGHT)
+                           
         
         
         
@@ -516,6 +525,7 @@ def main():
                         b_level = np.interp(length, [20, 300], [0, 100])
                         # set brightness
                         sbc.set_brightness(int(b_level))
+                        global  brightness_eraser = 'Brightness contorl'
         
             detector.current_time= current_time
             detector.screen_shot(frame)
