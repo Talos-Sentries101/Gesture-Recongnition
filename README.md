@@ -78,7 +78,3 @@ python your_main_script.py
 ## 💡 Built with ❤️ using OpenCV, MediaPipe & Python
 
 ---
-
-Would you also like me to show how you can add the **gesture images** into the cheat sheet table too? 🖼️ It’ll look super polished and professional! 🎯  
-(Example: adding your `.png` gesture icons next to each action!)  
-Should I prepare that too? 🚀
