@@ -99,6 +99,60 @@ class Handtracking:
            if draw:
                cv2.rectangle(frame, (self.xmin - 20, self.ymin - 20), (self.xmax + 20, self.ymax + 20), (0, 255, 0), 2)
        return self.lmslist
+    def vol(self,frame):
+        if len(lmslist) != 0:
+            prev_x,prev_y=0,0
+            temp= lmslist[8][1:]
+            temp2=lmslist[12][1:]
+            x1, y1 = temp[0],temp[1]
+            x2, y2 = temp2[0],temp2[1]
+            # 3. Check which finger are up
+            fingers = detector.findFingerUp()
+            # 4. Only index finger: Moving mode
+            if fingers[0]==1 and fingers[1] == 1 and fingers[2] == 0 and fingers[3]==0 and fingers[4]==0:
+                x3 = np.interp(x1, (frameR, width - frameR), (0, screen_width))
+                y3 = np.interp(y1, (frameR, height - frameR), (0, screen_height))
+
+                curr_x = prev_x + (x3 - prev_x) / smoothening
+                curr_y = prev_y + (y3 - prev_y) / smoothening
+                #pyautogui.moveTo(curr_x, curr_y)
+
+                autopy.mouse.move(curr_x, curr_y)  # Moving the cursor
+                cv2.circle(frame, (x1, y1), 7, (255, 0, 255), cv2.FILLED)
+                prev_x, prev_y = curr_x, curr_y
+            if fingers== [1,0,0,0,0]:
+                pyautogui.scroll(-60)
+                time.sleep(0.2)
+            if fingers == [1,1,1,1,1]:
+                pyautogui.scroll(60)
+                time.sleep(0.2)
+            # Both index and middle are up : left Clicking mode
+            if fingers[1] == 1 and fingers[2] == 1:
+
+                length, frame, lineInfo = detector.findDistance(8, 12, frame)
+
+
+                if length < 40:
+                    cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
+                    autopy.mouse.click()
+
+
+                # Both index and middle are up : Right Clicking mode
+            if fingers[1] == 1 and fingers[2] == 1:
+                length, frame, lineInfo = detector.findDistance(4, 20, frame)
+                if length < 20 :
+                    #cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
+                    autopy.mouse.click(button=autopy.mouse.Button.RIGHT)
+            if fingers[0]== 0 and fingers[2]==1 and fingers[1]==0 and fingers[4]==0:
+                tolarence=time.time()
+                length, frame, lineInfo = detector.findDistance(4, 12, frame)
+                cv2.circle(frame,(lineInfo[4],lineInfo[5]),18,(0,255,0),cv2.FILLED)
+                vol = np.interp(int(length), [30, 300], [minVol, maxVol])
+                if is_muted():
+                    volume.SetMute(0, None)
+                if tolarence > threshold:
+                    #if length <
+                    volume.SetMasterVolumeLevel(vol, None)
 
     def findFingerUp(self):
         if not self.lmslist: return []
@@ -279,7 +333,27 @@ class Handtracking:
         dist = round((self.lmslist[8][0] - Controller.pinchstartxcoord) * 10, 1)
         return dist
 
-co=cv2.VideoCapture(0)
+def draw_activate(canvas):
+
+    if fingers == draw_toggle_gesture:
+        if abs(current_time - detector.last_drawmode_toggle) > 5:
+            detector.is_drawing = not detector.is_drawing
+            print(f"Draw mode toggled: {detector.is_drawing}")
+            detector.last_drawmode_toggle = current_time
+
+    if detector.is_drawing and abs(current_time - detector.last_drawmode_toggle) > 2:
+        canvas = detector.draw_mode(frame, canvas, fingers)
+        cv2.imshow('Drawing Frame', canvas)
+
+        cv2.putText(frame, "DRAW MODE ON", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)
+        detector.drawing_window_open = True
+    else:
+        if detector.drawing_window_open:
+            cv2.destroyWindow('Drawing Frame')
+            detector.drawing_window_open = False
+
+
+co=cv2.VideoCapture(1)
 co.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
 co.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 detector = Handtracking()
@@ -313,24 +387,12 @@ while True:
     lmslist= detector.trackposition(frame)
     fingers = detector.findFingerUp()
     current_time = time.time()
-    if fingers == draw_toggle_gesture:
-        if abs(current_time - detector.last_drawmode_toggle) > 5:
-            detector.is_drawing = not detector.is_drawing
-            print(f"Draw mode toggled: {detector.is_drawing}")
-            detector.last_drawmode_toggle = current_time
 
-    if detector.is_drawing and abs(current_time - detector.last_drawmode_toggle) > 2:
-        canvas = detector.draw_mode(frame, canvas, fingers)
-        cv2.imshow('Drawing Frame', canvas)
+    draw_activate(canvas)
 
-        cv2.putText(frame, "DRAW MODE ON", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 5)
-
-        detector.drawing_window_open = True
-    else:
-        if detector.drawing_window_open:
-            cv2.destroyWindow('Drawing Frame')
-            detector.drawing_window_open = False
     if detector.is_drawing is False:
+        detector.vol(frame)
+        # mouse
         if len(lmslist) != 0:
             temp= lmslist[8][1:]
             temp2=lmslist[12][1:]
@@ -371,17 +433,10 @@ while True:
                 if length < 20 :
                     #cv2.circle(frame, (lineInfo[4], lineInfo[5]), 15, (0, 255, 0), cv2.FILLED)
                     autopy.mouse.click(button=autopy.mouse.Button.RIGHT)
-            if fingers[0]== 0 and fingers[2]==1 and fingers[1]==0 and fingers[4]==0:
-                tolarence=time.time()
-                length, frame, lineInfo = detector.findDistance(4, 12, frame)
-                cv2.circle(frame,(lineInfo[4],lineInfo[5]),18,(0,255,0),cv2.FILLED)
-                vol = np.interp(int(length), [30, 300], [minVol, maxVol])
-                if is_muted():
-                    volume.SetMute(0, None)
-                if tolarence > threshold:
-                    #if length <
-                    volume.SetMasterVolumeLevel(vol, None)
-                    time.sleep(0.1)
+
+
+
+            #brightness
             if fingers== [0,0,0,0,1]:
                 length, frame, lineInfo = detector.findDistance(4, 20, frame)
                 cv2.circle(frame, (lineInfo[4], lineInfo[5]), 18, (0, 255, 0), cv2.FILLED)
